@@ -436,14 +436,30 @@
                 for (const file of selectedFiles) {
                     showStatus(`Processing ${file.name}...`, 'info');
                     
-                    const arrayBuffer = await file.arrayBuffer();
-                    const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
-                    const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
-                    pages.forEach((page) => mergedPdf.addPage(page));
-                    
-                    processedFiles++;
-                    const progress = 20 + (processedFiles / totalFiles) * 60;
-                    updateProgress(progress);
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        
+                        // Load PDF with encryption handling
+                        const pdf = await PDFLib.PDFDocument.load(arrayBuffer, { 
+                            ignoreEncryption: true 
+                        });
+                        
+                        const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                        pages.forEach((page) => mergedPdf.addPage(page));
+                        
+                        processedFiles++;
+                        const progress = 20 + (processedFiles / totalFiles) * 60;
+                        updateProgress(progress);
+                        
+                    } catch (fileError) {
+                        console.error(`Error processing ${file.name}:`, fileError);
+                        showStatus(`Warning: Could not process ${file.name} - file may be corrupted or unsupported`, 'error');
+                        
+                        // Continue with other files
+                        processedFiles++;
+                        const progress = 20 + (processedFiles / totalFiles) * 60;
+                        updateProgress(progress);
+                    }
                 }
 
                 updateProgress(85);
