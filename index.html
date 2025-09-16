@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simple PDF Merger & Print</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f7fa;
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            padding: 30px;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .header h1 {
+            color: #2c3e50;
+            font-size: 2rem;
+            margin-bottom: 10px;
+        }
+
+        .header p {
+            color: #7f8c8d;
+            font-size: 1rem;
+        }
+
+        .drop-zone {
+            border: 2px dashed #3498db;
+            border-radius: 8px;
+            padding: 40px 20px;
+            text-align: center;
+            background: #f8f9fa;
+            margin-bottom: 20px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone:hover {
+            border-color: #2980b9;
+            background: #ecf0f1;
+        }
+
+        .drop-zone.dragover {
+            border-color: #27ae60;
+            background: #d5f4e6;
+        }
+
+        .drop-zone h3 {
+            color: #3498db;
+            margin-bottom: 10px;
+        }
+
+        .drop-zone p {
+            color: #7f8c8d;
+            margin-bottom: 15px;
+        }
+
+        .btn {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+
+        .btn:hover {
+            background: #2980b9;
+        }
+
+        .btn:disabled {
+            background: #bdc3c7;
+            cursor: not-allowed;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .file-list {
+            margin-bottom: 20px;
+        }
+
+        .file-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+            border-left: 4px solid #3498db;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .file-icon {
+            width: 40px;
+            height: 40px;
+            background: #e74c3c;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 5px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+
+        .file-details h4 {
+            color: #2c3e50;
+            margin-bottom: 5px;
+        }
+
+        .file-details p {
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+
+        .remove-btn {
+            background: #e74c3c;
+            padding: 8px 15px;
+            font-size: 12px;
+        }
+
+        .remove-btn:hover {
+            background: #c0392b;
+        }
+
+        .merge-btn {
+            background: #27ae60;
+            font-size: 1.1rem;
+            padding: 15px 30px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .merge-btn:hover {
+            background: #229954;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #ecf0f1;
+            border-radius: 3px;
+            overflow: hidden;
+            margin: 20px 0;
+            display: none;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #3498db;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .preview-container {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .preview-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #dee2e6;
+        }
+
+        .print-btn {
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 12px 25px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 600;
+        }
+
+        .print-btn:hover {
+            background: #229954;
+        }
+
+        .pdf-viewer {
+            width: 100%;
+            height: 500px;
+            border: 1px solid #dee2e6;
+            border-radius: 5px;
+            background: white;
+        }
+
+        .status-message {
+            padding: 12px 20px;
+            border-radius: 5px;
+            margin-bottom: 15px;
+            font-weight: 500;
+            display: none;
+        }
+
+        .status-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .status-info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>PDF Merger & Print</h1>
+            <p>Merge multiple PDFs and print them directly</p>
+        </div>
+
+        <div id="statusMessage" class="status-message"></div>
+
+        <div class="drop-zone" id="dropZone">
+            <h3>Drop PDF files here</h3>
+            <p>or click to select files</p>
+            <button class="btn" onclick="document.getElementById('fileInput').click()">
+                Choose Files
+            </button>
+        </div>
+
+        <input type="file" id="fileInput" class="file-input" multiple accept=".pdf">
+
+        <div class="file-list" id="fileList"></div>
+
+        <div class="progress-bar" id="progressBar">
+            <div class="progress-fill" id="progressFill"></div>
+        </div>
+
+        <button class="btn merge-btn" id="mergeBtn" onclick="mergeAndPreview()" disabled>
+            Merge & Preview PDFs
+        </button>
+
+        <div class="preview-container" id="previewContainer">
+            <div class="preview-header">
+                <div id="previewInfo">Merged PDF Preview</div>
+                <button class="print-btn" onclick="printPdf()">
+                    🖨️ Print PDF
+                </button>
+            </div>
+            <iframe class="pdf-viewer" id="pdfViewer" src=""></iframe>
+        </div>
+    </div>
+
+    <script>
+        let selectedFiles = [];
+        let mergedPdfBlob = null;
+
+        // DOM Elements
+        const dropZone = document.getElementById('dropZone');
+        const fileInput = document.getElementById('fileInput');
+        const fileList = document.getElementById('fileList');
+        const mergeBtn = document.getElementById('mergeBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const previewContainer = document.getElementById('previewContainer');
+        const pdfViewer = document.getElementById('pdfViewer');
+        const statusMessage = document.getElementById('statusMessage');
+        const previewInfo = document.getElementById('previewInfo');
+
+        // Event Listeners
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const files = Array.from(e.dataTransfer.files);
+            handleFiles(files);
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            const files = Array.from(e.target.files);
+            handleFiles(files);
+        });
+
+        // File handling
+        function handleFiles(files) {
+            const pdfFiles = files.filter(file => file.type === 'application/pdf');
+            
+            if (pdfFiles.length !== files.length) {
+                showStatus('Only PDF files are allowed. Some files were ignored.', 'error');
+            }
+
+            if (pdfFiles.length === 0) {
+                showStatus('No valid PDF files selected.', 'error');
+                return;
+            }
+
+            selectedFiles.push(...pdfFiles);
+            updateFileList();
+            updateMergeButton();
+            showStatus(`${pdfFiles.length} PDF file(s) added successfully!`, 'success');
+        }
+
+        function updateFileList() {
+            fileList.innerHTML = '';
+            
+            selectedFiles.forEach((file, index) => {
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                const fileSize = (file.size / 1024 / 1024).toFixed(2);
+                
+                fileItem.innerHTML = `
+                    <div class="file-info">
+                        <div class="file-icon">PDF</div>
+                        <div class="file-details">
+                            <h4>${file.name}</h4>
+                            <p>${fileSize} MB</p>
+                        </div>
+                    </div>
+                    <button class="btn remove-btn" onclick="removeFile(${index})">
+                        Remove
+                    </button>
+                `;
+                
+                fileList.appendChild(fileItem);
+            });
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateFileList();
+            updateMergeButton();
+            
+            if (selectedFiles.length === 0) {
+                previewContainer.style.display = 'none';
+            }
+        }
+
+        function updateMergeButton() {
+            mergeBtn.disabled = selectedFiles.length < 2;
+        }
+
+        function showProgress() {
+            progressBar.style.display = 'block';
+            progressFill.style.width = '0%';
+        }
+
+        function updateProgress(percentage) {
+            progressFill.style.width = percentage + '%';
+        }
+
+        function hideProgress() {
+            progressBar.style.display = 'none';
+        }
+
+        function showStatus(message, type) {
+            statusMessage.textContent = message;
+            statusMessage.className = `status-message status-${type}`;
+            statusMessage.style.display = 'block';
+            
+            setTimeout(() => {
+                statusMessage.style.display = 'none';
+            }, 4000);
+        }
+
+        // PDF Merging
+        async function mergeAndPreview() {
+            if (selectedFiles.length < 2) {
+                showStatus('Please select at least 2 PDF files to merge', 'error');
+                return;
+            }
+
+            showProgress();
+            updateProgress(10);
+            showStatus('Starting PDF merge...', 'info');
+            mergeBtn.disabled = true;
+
+            try {
+                const mergedPdf = await PDFLib.PDFDocument.create();
+                updateProgress(20);
+
+                let processedFiles = 0;
+                const totalFiles = selectedFiles.length;
+
+                for (const file of selectedFiles) {
+                    showStatus(`Processing ${file.name}...`, 'info');
+                    
+                    const arrayBuffer = await file.arrayBuffer();
+                    const pdf = await PDFLib.PDFDocument.load(arrayBuffer);
+                    const pages = await mergedPdf.copyPages(pdf, pdf.getPageIndices());
+                    pages.forEach((page) => mergedPdf.addPage(page));
+                    
+                    processedFiles++;
+                    const progress = 20 + (processedFiles / totalFiles) * 60;
+                    updateProgress(progress);
+                }
+
+                updateProgress(85);
+                showStatus('Generating merged PDF...', 'info');
+                const mergedPdfBytes = await mergedPdf.save();
+                
+                mergedPdfBlob = new Blob([mergedPdfBytes], { type: 'application/pdf' });
+                const pdfUrl = URL.createObjectURL(mergedPdfBlob);
+                
+                pdfViewer.src = pdfUrl;
+                previewContainer.style.display = 'block';
+                
+                const totalPages = mergedPdf.getPageCount();
+                const totalSizeMB = (mergedPdfBlob.size / 1024 / 1024).toFixed(2);
+                previewInfo.textContent = `Merged PDF: ${totalPages} pages, ${totalSizeMB} MB`;
+                
+                updateProgress(100);
+                showStatus(`Successfully merged ${selectedFiles.length} files into ${totalPages} pages!`, 'success');
+                
+                setTimeout(() => {
+                    hideProgress();
+                }, 500);
+                
+            } catch (error) {
+                hideProgress();
+                showStatus('Error merging PDFs: ' + error.message, 'error');
+                console.error('Merge error:', error);
+            } finally {
+                mergeBtn.disabled = false;
+            }
+        }
+
+        // Print functionality - Simple browser print
+        function printPdf() {
+            if (!mergedPdfBlob) {
+                showStatus('No merged PDF available for printing', 'error');
+                return;
+            }
+
+            // Create a temporary URL for the PDF
+            const pdfUrl = URL.createObjectURL(mergedPdfBlob);
+            
+            // Open PDF in new tab and trigger print
+            const printTab = window.open(pdfUrl, '_blank');
+            
+            // Wait for PDF to load, then print
+            printTab.addEventListener('load', function() {
+                setTimeout(function() {
+                    printTab.print();
+                }, 500);
+            });
+            
+            showStatus('Opening PDF in new tab for printing...', 'info');
+            
+            // Clean up URL after a delay
+            setTimeout(function() {
+                URL.revokeObjectURL(pdfUrl);
+            }, 5000);
+        }
+
+        // Initialize
+        window.addEventListener('load', function() {
+            showStatus('Ready! Drop PDF files or click to select.', 'info');
+        });
+    </script>
+</body>
+</html>
